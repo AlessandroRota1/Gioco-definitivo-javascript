@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            background-image: url("campetto.jpg");
+            background-repeat: no-repeat;
+            background-size: cover;
+            margin: 0;
+            overflow: hidden;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #immaginesx, #immaginedx, #palla, #fulmine {
+            position: absolute;
+        }
+
+        #immaginesx {
+            left: 5%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        #immaginedx {
+            left: 95%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        #palla {
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #fulmine {
+            width: 60px;
+            height: 100px;
+            position: absolute;
+            display: none;
+        }
+
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+        }
+
+        #countdown {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            display: none;
+        }
+
+        #restart {
+            position: absolute;
+            top: 30px;
+            left: 3%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+
+        #pausa, #gioca {
+            position: absolute;
+            top: 30px;
+            left: 10%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+
+        #gioca {
+            display: none;
+        }
+
+        #inputNomi {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #inputNomi input {
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        #inputNomi button {
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #vittoria {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .press-start-2p-regular {
+            font-family: "Press Start 2P", system-ui;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+		#tartaruga {
+			width: 60px;
+			height: 100px;
+			position: absolute;
+			display: none;
+		}
+
+		#modalSinistra {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: red; /* Sfondo rosso */
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            transition: bottom 0.5s ease-in-out; /* Animazione di apertura */
+            z-index: 9999; /* Assicura che la modal sia sopra ogni altro elemento */
+        }
+
+		#modalDestra {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: blue; /* Sfondo blu */
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            transition: bottom 0.5s ease-in-out; /* Animazione di apertura */
+            z-index: 9999; /* Assicura che la modal sia sopra ogni altro elemento */
+        }
+
+    </style>
+    <script>
+
+		document.addEventListener('DOMContentLoaded', function() {
+		var palla = document.getElementById('palla');
+		var immagineSx = document.getElementById('immaginesx');
+		var immagineDx = document.getElementById('immaginedx');
+		var fulmine = document.getElementById('fulmine');
+		var tartaruga = document.getElementById('tartaruga');
+		var punteggio = document.getElementById('score');
+		var countdown = document.getElementById('countdown');
+		var reset = document.getElementById('restart');
+		var pausa = document.getElementById('pausa');
+		var gioca = document.getElementById('gioca');
+		var inputNomi = document.getElementById('inputNomi');
+		var inputNomeGiocatore1 = document.getElementById('player1Name');
+		var inputNomeGiocatore2 = document.getElementById('player2Name');
+		var bottoneInizia = document.getElementById('startButton');
+		var schermataVittoria = document.getElementById('vittoria');
+		var x = 50;
+		var y = 50;
+		var velocitaInizialeX = 1;
+		var velocitaInizialeY = 0.5;
+		var velocitaX = velocitaInizialeX;
+		var velocitaY = velocitaInizialeY;
+		var velocitaRacchetta = 2;
+		var tastiPremuti = {};
+		var punteggioGiocatore1 = 0;
+		var punteggioGiocatore2 = 0;
+		var nomeGiocatore1 = 'Giocatore 1';
+		var nomeGiocatore2 = 'Giocatore 2';
+		var intervalloPartita, intervalloMuoviPalla, intervalloFulmine, intervalloTartaruga;
+		var moltiplicatoreVelocita = 1;
+		var giocoInPausa = false;
+		var suonoPop = new Audio('pop.mp3');
+		var suonoApplauso = new Audio('applauso.mp3');
+		var suonoVittoria = new Audio('vittoria.mp3');
+
+		function aggiornaPunteggio() { 
+			punteggio.innerHTML = nomeGiocatore1 + ': ' + punteggioGiocatore1 + ' - ' + nomeGiocatore2 + ': ' + punteggioGiocatore2; //Funzione necessaria per tenere sempre aggiornato il punteggio
+	}
+
+		function controllaVittoria() {
+				if (punteggioGiocatore1 >= 10 || punteggioGiocatore2 >= 10) { //Se il punteggio è uguale uguale a 10 uno dei giocatori vince
+                    clearInterval(intervalloPartita); //Blocco tutti gli intervali o timer
+                    clearInterval(intervalloMuoviPalla);
+                    clearInterval(intervalloFulmine);
+                    clearInterval(intervalloTartaruga);
+                    suonoVittoria.play(); //Riproduce il suono di vittoria
+                    schermataVittoria.style.display = 'block'; //Viene mostrato l'elemento schermata vittoria
+                    return true;
+                }
+			return false;
+		}
+
+		function mostraModalSinistra() {
+                var modalSinistra = document.getElementById('modalSinistra');
+                modalSinistra.innerText = nomeGiocatore1 + ' ha segnato!';
+                modalSinistra.style.bottom = '50px'; // Mostra la modal se segna il giocatore a sinistra
+                setTimeout(function() {
+                    modalSinistra.style.bottom = '-100px'; // Nasconde la modal dopo un po'
+                }, 2000); // Nasconde dopo 2 secondi
+            }
+
+            function mostraModalDestra() {
+                var modalDestra = document.getElementById('modalDestra');
+                modalDestra.innerText = nomeGiocatore2 + ' ha segnato!';
+                modalDestra.style.bottom = '50px'; // Mostra la modal se segna il giocatore a destra
+                setTimeout(function() {
+                    modalDestra.style.bottom = '-100px'; // Nasconde la modal dopo un po'
+                }, 2000); // Nasconde dopo 2 secondi
+            }
+
+
+function Muovi() {
+		if (tastiPremuti['87']) { // W
+			if (parseFloat(immagineSx.style.top) - velocitaRacchetta >= 0) { //Se non ha raggiunto il bordo superiore
+				immagineSx.style.top = (parseFloat(immagineSx.style.top) - velocitaRacchetta) + "%";
+			}
+		}
+		if (tastiPremuti['83']) { // S
+			if (parseFloat(immagineSx.style.top) + velocitaRacchetta <= 100) { //Se non ha raggiunto il bordo inferiore
+		immagineSx.style.top = (parseFloat(immagineSx.style.top) + velocitaRacchetta) + "%";
+			}
+		}
+		if (tastiPremuti['38']) { // Freccia su
+			if (parseFloat(immagineDx.style.top) - velocitaRacchetta >= 0) { //Se non ha raggiunto il bordo superiore
+		immagineDx.style.top = (parseFloat(immagineDx.style.top) - velocitaRacchetta) + "%";
+			}
+		}
+		if (tastiPremuti['40']) { // Freccia giù
+			if (parseFloat(immagineDx.style.top) + velocitaRacchetta <= 100) { //Se non ha raggiunto il bordo inferiore
+		immagineDx.style.top = (parseFloat(immagineDx.style.top) + velocitaRacchetta) + "%";
+			}
+		}
+}
+
+function muoviPalla() {
+	x += velocitaX * moltiplicatoreVelocita;
+	y += velocitaY * moltiplicatoreVelocita;
+
+	if (x <= 0) { //Se si fa gol
+		punteggioGiocatore2++;
+		aggiornaPunteggio();
+		suonoApplauso.play();
+		mostraModalDestra();
+	if (!controllaVittoria()) {
+		resetPartita();
+	}
+	}
+	if (x >= 100) { //Se si fa gol
+		punteggioGiocatore1++;
+		aggiornaPunteggio();
+		suonoApplauso.play();
+		mostraModalSinistra();
+	if (!controllaVittoria()) { //Se non si è finita la partita
+		resetPartita();
+		}
+		}
+		if (y >= 100 || y <= 0) { //gestione rimbalzo
+		velocitaY = -velocitaY;
+		}
+
+	var pallaRect = palla.getBoundingClientRect(); //Rettangoli creati attorno alle immagini per gestire le collisioni
+	var immagineDxRect = immagineDx.getBoundingClientRect();
+	var immagineSxRect = immagineSx.getBoundingClientRect();
+	var fulmineRect = fulmine.getBoundingClientRect();
+	var tartarugaRect = tartaruga.getBoundingClientRect(); 
+
+	if (pallaRect.right >= immagineDxRect.left && pallaRect.left <= immagineDxRect.right && pallaRect.bottom >= immagineDxRect.top && pallaRect.top <= immagineDxRect.bottom) { //La palla collide con la paletta
+	velocitaX = -Math.abs(velocitaX);
+	suonoPop.play();
+	}
+	if (pallaRect.left <= immagineSxRect.right && pallaRect.right >= immagineSxRect.left && pallaRect.bottom >= immagineSxRect.top && pallaRect.top <= immagineSxRect.bottom) { //La palla collide con la paletta
+	velocitaX = Math.abs(velocitaX);
+	suonoPop.play();
+	}
+
+	// Controlla la collisione con il fulmine
+	if (fulmine.style.display !== 'none' && pallaRect.left < fulmineRect.right && pallaRect.right > fulmineRect.left && pallaRect.top < fulmineRect.bottom && pallaRect.bottom > fulmineRect.top) {
+	moltiplicatoreVelocita = 2; //Raddoppia velocità
+	setTimeout(function () {
+	moltiplicatoreVelocita = 1;
+	}, 1000); //per un secondo
+	}
+
+	// Controlla la collisione con la tartaruga
+	if (tartaruga.style.display !== 'none' && pallaRect.left < tartarugaRect.right && pallaRect.right > tartarugaRect.left && pallaRect.top < tartarugaRect.bottom && pallaRect.bottom > tartarugaRect.top) {
+	moltiplicatoreVelocita = 0.5; //Dimezza la velocità
+	setTimeout(function () {
+	moltiplicatoreVelocita = 1;
+	}, 1000); //per un secondo
+	}
+
+	palla.style.left = x + '%'; //la palla si deve costantemente trovare nella posizione (X,Y)
+	palla.style.top = y + '%';
+	}
+	
+function resetPartita() { //quando si ga gol
+clearInterval(intervalloPartita); //si azzeran gli intervalli
+clearInterval(intervalloMuoviPalla);
+x = 50; //Palla e rettangoli al centro
+y = 50;
+immagineSx.style.top = '50%';
+immagineDx.style.top = '50%';
+palla.style.left = '50%';
+palla.style.top = '50%';
+velocitaX = velocitaInizialeX; //Velocità e moltiplicatori riportati all'inizio
+velocitaY = velocitaInizialeY;
+moltiplicatoreVelocita = 1;
+tastiPremuti = {};
+countdownAvvio(3); //Countdown riparte da 3
+}
+
+function resetTutto() { //Pulsante "RESET"
+window.location.reload();  //Ricarica
+}
+
+function countdownAvvio(secondi) { //Countdown prima di muovere la pallina
+countdown.innerHTML = secondi;
+countdown.style.display = 'block';
+var intervalloCountdown = setInterval(function () {
+secondi--;
+if (secondi > 0) { //Se i secondi son maggiori di 0 ti stampa il numero e te lo decrementa
+countdown.innerHTML = secondi;
+} else if (secondi == 0) {
+countdown.innerHTML = 'VIA!'; //A 0 scrive VIA!
+} else {
+clearInterval(intervalloCountdown); //Altrimenti partono gli altri intervalli o timer
+countdown.style.display = 'none';
+intervalloPartita = setInterval(Muovi, 20);
+intervalloMuoviPalla = setInterval(muoviPalla, 20);
+avviaIntervalloFulmine();
+avviaIntervalloTartaruga();
+}
+}, 1000);
+}
+
+function avviaIntervalloFulmine() {
+intervalloFulmine = setInterval(function () {
+var randomX = Math.random() * 90; //posizione random
+var randomY = Math.random() * 90;
+fulmine.style.left = randomX + '%';
+fulmine.style.top = randomY + '%';
+fulmine.style.display = 'block';
+}, Math.random() * 6000 + 8000); //Per un intervallo di tempo casuale
+}
+
+function avviaIntervalloTartaruga() { // Nuova funzione
+intervalloTartaruga = setInterval(function () {
+var randomX = Math.random() * 90; //posizione random
+var randomY = Math.random() * 90;
+tartaruga.style.left = randomX + '%';
+tartaruga.style.top = randomY + '%';
+tartaruga.style.display = 'block';
+}, Math.random() * 6000 + 8000); //Per un intervallo di tempo casuale
+}
+
+function togglePausa() { //Pausa
+if (giocoInPausa) { //Se gioco in pausa è true avvia gli intervalli
+intervalloPartita = setInterval(Muovi, 20);
+intervalloMuoviPalla = setInterval(muoviPalla, 20);
+avviaIntervalloFulmine();
+avviaIntervalloTartaruga();
+gioca.style.display = 'none';
+pausa.style.display = 'block';
+} else {
+clearInterval(intervalloPartita);
+clearInterval(intervalloMuoviPalla);
+clearInterval(intervalloFulmine);
+clearInterval(intervalloTartaruga); // Altrimenti li blocca
+pausa.style.display = 'none';
+gioca.style.display = 'block';
+}
+giocoInPausa = !giocoInPausa;
+}
+
+document.addEventListener('keydown', function (e) {
+tastiPremuti[e.keyCode] = true;
+if (e.keyCode === 32) { //Anche con lo spazio si può metter in pausa
+e.preventDefault();
+togglePausa();
+}
+});
+
+document.addEventListener('keyup', function (e) {
+delete tastiPremuti[e.keyCode]; //E far ripartire
+});
+
+reset.addEventListener('click', resetTutto);
+
+pausa.addEventListener('click', function () {
+togglePausa();
+});
+
+gioca.addEventListener('click', function () {
+togglePausa();
+});
+
+bottoneInizia.addEventListener('click', function () {
+nomeGiocatore1 = inputNomeGiocatore1.value || 'Giocatore 1'; //Assegna il nome dato al nomegiocatore 1 e 2
+nomeGiocatore2 = inputNomeGiocatore2.value || 'Giocatore 2';
+inputNomi.style.display = 'none';
+aggiornaPunteggio();
+countdownAvvio(3);
+});
+
+aggiornaPunteggio();
+});
+</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="score" class="press-start-2p-regular"></div>
+<div id="countdown" class="press-start-2p-regular"></div>
+<img src="rettangolo.png" id="immaginesx" height="100px" width="30px">
+<img src="rettangolo.png" id="immaginedx" height="100px" width="30px">
+<img src="tennis.png" id="palla" height="50px" width="50px">
+<img src="reset.png" id="restart" height="80px" width="80px">
+<img src="pausa.png" id="pausa" height="60px" width="60px">
+<img src="play.png" id="gioca" height="60px" width="60px">
+<img src="tartaruga.png" id="tartaruga" width="60px" height="100px">
+
+<div id="inputNomi">
+    <input type="text" id="player1Name" placeholder="Nome Giocatore 1 (W ed S)">
+    <input type="text" id="player2Name" placeholder="Nome Giocatore 2 (Frecce)">
+    <button id="startButton">Inizia</button>
+</div>
+    <div id="modalSinistra"></div>
+    <div id="modalDestra"></div>
+
+<img src="vittoria.png" id="vittoria" height="1000px" width="1000px">
+<img src="fulmine.png" id="fulmine">
+</body>
+</html>
